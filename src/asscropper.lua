@@ -52,10 +52,11 @@ function ASSCropper.new(display_state)
     {"mouse_move", function()  self:update_mouse_position() end },
     {"mouse_btn0", function(e) self:on_mouse("mouse_btn0", false) end, function(e) self:on_mouse("mouse_btn0", true) end},
     {"shift+mouse_btn0", function(e) self:on_mouse("mouse_btn0", false, true) end, function(e) self:on_mouse("mouse_btn0", true, true) end},
-    {"c", function() self:key_event("CROSSHAIR") end },
+    {"h", function() self:key_event("CROSSHAIR") end },
     {"x", function() self:key_event("GUIDES") end },
     {"z", function() self:key_event("INVERT") end },
-    {"ENTER", function() self:key_event("ENTER") end },
+    {"c", function() self:key_event("CROP") end },
+    {"b", function() self:key_event("BLUR") end },
     {"ESC", function() self:key_event("ESC") end }
   }
   mp.set_key_bindings(listeners, self.MOUSE_EVENT, "force")
@@ -88,23 +89,26 @@ end
 
 
 function ASSCropper:key_event(name)
-  if name == "ENTER" then
+  if name == "CROP" then
     self:stop_crop(false)
-
     self:finalize_crop()
 
-    if self.callback_on_crop == nil then
-      mp.set_osd_ass(0,0, "")
-    else
+    if self.callback_on_crop then
       self.callback_on_crop(self.current_crop)
+    end
+
+  elseif name == "BLUR" then
+    self:stop_crop(false)
+    self:finalize_crop()
+
+    if self.callback_on_blur then
+      self.callback_on_blur(self.current_crop)
     end
 
   elseif name == "ESC" then
     self:stop_crop(true)
 
-    if self.callback_on_cancel == nil then
-      mp.set_osd_ass(0,0, "")
-    else
+    if self.callback_on_cancel then
       self.callback_on_cancel()
     end
 
@@ -119,7 +123,7 @@ function ASSCropper:key_event(name)
 end
 
 
-function ASSCropper:start_crop(options, on_crop, on_cancel)
+function ASSCropper:start_crop(options, on_crop, on_blur, on_cancel)
   -- Refresh display state
   self.display_state:recalculate_bounds(true)
   if self.display_state.video_ready then
@@ -136,6 +140,7 @@ function ASSCropper:start_crop(options, on_crop, on_cancel)
     end
 
     self.callback_on_crop = on_crop
+    self.callback_on_blur = on_blur
     self.callback_on_cancel = on_cancel
 
     self.dragging = 0
@@ -148,6 +153,7 @@ end
 function ASSCropper:stop_crop(clear)
   self.active = false
   self.tick_timer:stop()
+  mp.set_osd_ass(0,0, "")
 
   self:disable_key_bindings()
   if clear then
@@ -821,8 +827,8 @@ function ASSCropper:get_render_ass(dim_only)
 
     local crosshair_txt = self.options.draw_mouse and "Hide" or "Show";
     lines = {
-      fmt_key("ENTER", "Accept crop") .. " " .. fmt_key("ESC", "Cancel crop"),
-      fmt_key("C", crosshair_txt .. " crosshair") .. " " .. fmt_key("X", "Cycle guides") .. " " .. fmt_key("Z", "Invert color"),
+      fmt_key("c", "Apply crop") .. " " .. fmt_key("b", "Apply blur") .. " " .. fmt_key("ESC", "Cancel"),
+      fmt_key("H", crosshair_txt .. " crosshair") .. " " .. fmt_key("X", "Cycle guides") .. " " .. fmt_key("Z", "Invert color"),
       fmt_key("SHIFT-Drag", "Constrain ratio")
     }
 

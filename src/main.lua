@@ -1,24 +1,17 @@
 function script_crop_toggle()
-  if crop_active then
+  if filter_active then
       unapply()
-      crop_active = false
       return
   end
 
   if asscropper.active then
     asscropper:stop_crop(true)
   else
-    local on_crop = function(crop)
-      mp.set_osd_ass(0, 0, "")
-      apply(crop)
-      crop_active = true
-    end
     local on_cancel = function()
       mp.osd_message("Crop canceled")
-      mp.set_osd_ass(0, 0, "")
     end
 
-    asscropper:start_crop(nil, on_crop, on_cancel)
+    asscropper:start_crop(nil, apply_crop, apply_blur, on_cancel)
     if not asscropper.active then
       mp.osd_message("No video to crop!", 2)
     end
@@ -38,13 +31,22 @@ function on_tick_listener()
 end
 
 
-function apply(crop)
+function apply_crop(crop)
     mp.command(string.format("no-osd vf add @%s:crop=%d:%d:%d:%d", SCRIPT_NAME,
                              crop.w, crop.h, crop.x, crop.y))
+    filter_active = true
+end
+
+function apply_blur(crop)
+    mp.command(string.format("no-osd vf add @%s:delogo=%d:%d:%d:%d", SCRIPT_NAME,
+                             crop.x, crop.y, crop.w, crop.h))
+    filter_active = true
 end
 
 function unapply()
     mp.command(string.format("no-osd vf del @" .. SCRIPT_NAME .. ":crop"))
+    mp.command(string.format("no-osd vf del @" .. SCRIPT_NAME .. ":delogo"))
+    filter_active = false
 end
 
 ----------------------
@@ -53,7 +55,7 @@ end
 
 display_state = DisplayState()
 asscropper = ASSCropper(display_state)
-crop_active = false
+filter_active = false
 
 asscropper.tick_callback = on_tick_listener
 mp.register_event("tick", on_tick_listener)
